@@ -53,8 +53,11 @@ target_link_libraries(${PROJECT_NAME} PRIVATE openglplot)
 - Add the ability to put two graphs in one widget
 - Improve text rendering
 - Improve text characters loading perfomance
+- Improve smoothing
 - Add power sybols to render numbers with more than 7 characters
 - Eliminate text and axis jitter 
 - Add framebuffer copy if possible 
-
+- Add custom graph signatures
+- Add captions support on the graph
+- Add support for saving graph
 
