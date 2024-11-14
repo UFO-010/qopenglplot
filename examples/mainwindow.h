@@ -18,9 +18,6 @@ public:
 
   wgtPlot *wgt0;
   wgtPlot *wgt1;
-  wgtPlot *wgt2;
-  wgtPlot *wgt3;
-  wgtPlot *wgt4;
 
   std::vector<double> x1;
   std::vector<double> y1;
