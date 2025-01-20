@@ -29,12 +29,7 @@ target_link_libraries(${PROJECT_NAME}_compiler_flags INTERFACE ${PROJECT_NAME}_c
 target_compile_features(${PROJECT_NAME}_compiler_flags INTERFACE cxx_std_11)
 
 
-
-add_subdirectory(../../qopenglplot openglplot)
-
-
-#set(CMAKE_BINARY_DIR "${CMAKE_BINARY_DIR}/build")
-
+add_subdirectory(../ openglplot)
 
 #insert your files and directories names here
 set(SOURCES

@@ -1,67 +1,126 @@
 
-#SET(CMAKE_EXE_LINKER_FLAGS "-fsanitize=address")
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
 
-#target_compile_options(${PROJECT_NAME}_compiler_flags_c INTERFACE
-#  "$<${gcc_like_c}:$<BUILD_INTERFACE:-fsanitize=address>>"
-#)
+    include(CheckCXXCompilerFlag)
 
-#target_compile_options(${PROJECT_NAME}_compiler_flags_cxx INTERFACE
-#  "$<${gcc_like_cxx}:$<BUILD_INTERFACE:-fsanitize=address>>"
-#)
+    option(${PROJECT_NAME}_ASAN "Address sanitizer" OFF)
+    option(${PROJECT_NAME}_MSAN "Memory sanitizer" OFF)
+    option(${PROJECT_NAME}_LSAN "Leak sanitizer" OFF)
+    option(${PROJECT_NAME}_UBSAN "Undefined behavior sanitizer" OFF)
+    option(${PROJECT_NAME}_TSAN "Thread sanitizer" OFF)
 
-add_compile_options(-fsanitize=address)
-add_link_options(-fsanitize=address)
+    macro(add_address_sanitizer)
+        set(CMAKE_REQUIRED_FLAGS "-fsanitize=address")
+        check_cxx_compiler_flag(-fsanitize=address HAVE_FLAG_SANITIZER)
+        if (HAVE_FLAG_SANITIZER)
+            message("Adding -fsanitize=address")
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
+            set(DCMAKE_C_FLAGS "${DCMAKE_C_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
+            set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
+            set(DCMAKE_MODULE_LINKER_FLAGS "${DCMAKE_MODULE_LINKER_FLAGS} -fsanitize=address")
+            add_compile_definitions("detect_stack_use_after_return=1:atexit=1:print_stats=1:debug=1;")
+        else ()
+            message(WARNING "-fsanitize=address unavailable")
+        endif ()
+    endmacro()
 
-target_compile_options(${PROJECT_NAME}_compiler_flags_c INTERFACE
-  "$<${gcc_like_c}:$<BUILD_INTERFACE:-fsanitize=address>>"
-)
 
-target_compile_options(${PROJECT_NAME}_compiler_flags_cxx INTERFACE
-  "$<${gcc_like_cxx}:$<BUILD_INTERFACE:-fsanitize=address>>"
-)
+    macro(add_memory_sanitizer)
+        set(CMAKE_REQUIRED_FLAGS "-fsanitize=memory")
+        check_cxx_compiler_flag(-fsanitize=memory HAVE_FLAG_SANITIZER)
+        if (HAVE_FLAG_SANITIZER)
+            check_cxx_compiler_flag(-fsanitize=address HAVE_ADDR_SANITIZER)
+            if (HAVE_ADDR_SANITIZER)
+                message(WARNING "-fsanitize=memory not allowed with --fsanitize=address")
+            else()
+                message("Adding -fsanitize=memory")
+                set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=memory -fno-omit-frame-pointer -fsanitize-memory-track-origins=2 -fno-sanitize-memory-use-after-dtor")
+                set(DCMAKE_C_FLAGS "${DCMAKE_C_FLAGS} -fsanitize=memory -fno-omit-frame-pointer -fsanitize-memory-track-origins=2 -fno-sanitize-memory-use-after-dtor")
+                set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=memory")
+                set(DCMAKE_MODULE_LINKER_FLAGS "${DCMAKE_MODULE_LINKER_FLAGS} -fsanitize=memory")
+            endif()
+        else ()
+            message(WARNING "-fsanitize=memory unavailable")
+        endif ()
+    endmacro()
 
-set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
-set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=undefined -fno-sanitize-recover=all
-    -fsanitize=float-divide-by-zero -fsanitize=float-cast-overflow -fno-sanitize=null -fno-sanitize=alignment")
-set (CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
 
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
+    macro(add_leak_sanitizer)
+        set(CMAKE_REQUIRED_FLAGS "-fsanitize=leak")
+        check_cxx_compiler_flag(-fsanitize=leak HAVE_FLAG_SANITIZER)
+        if (HAVE_FLAG_SANITIZER)
+            message("Adding -fsanitize=leak")
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=leak -fno-omit-frame-pointer")
+            set(DCMAKE_C_FLAGS "${DCMAKE_C_FLAGS} -fsanitize=leak -fno-omit-frame-pointer")
+            set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=leak")
+            set(DCMAKE_MODULE_LINKER_FLAGS "${DCMAKE_MODULE_LINKER_FLAGS} -fsanitize=leak")
+        else ()
+            message(WARNING "-fsanitize=leak unavailable")
+        endif ()
+    endmacro()
 
-get_property(isMultiConfig GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
 
-if(isMultiConfig)
-    if(NOT "Asan" IN_LIST CMAKE_CONFIGURATION_TYPES)
-        list(APPEND CMAKE_CONFIGURATION_TYPES Asan)
+    macro(add_undefined_sanitizer)
+        set(CMAKE_REQUIRED_FLAGS "-fsanitize=undefined")
+        check_cxx_compiler_flag(-fsanitize=undefined HAVE_FLAG_SANITIZER)
+        if (HAVE_FLAG_SANITIZER)
+            message("Adding -fsanitize=undefined")
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=undefined -fno-omit-frame-pointer -fno-sanitize-recover=all \
+                -fsanitize=signed-integer-overflow,null,alignment -fsanitize-trap=alignment -fsanitize=float-divide-by-zero -fsanitize=float-cast-overflow")
+            set(DCMAKE_C_FLAGS "${DCMAKE_C_FLAGS} -fsanitize=undefined -fno-omit-frame-pointer -fno-sanitize-recover=all \
+                -fsanitize=signed-integer-overflow,null,alignment -fsanitize-trap=alignment -fsanitize=float-divide-by-zero -fsanitize=float-cast-overflow")
+            set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=undefined")
+            set(DCMAKE_MODULE_LINKER_FLAGS "${DCMAKE_MODULE_LINKER_FLAGS} -fsanitize=undefined")
+        else ()
+            message(WARNING "-fsanitize=undefined unavailable")
+        endif ()
+    endmacro()
+
+
+    macro(add_thread_sanitizer)
+        set(CMAKE_REQUIRED_FLAGS "-fsanitize=thread")
+        check_cxx_compiler_flag(-fsanitize=thread HAVE_FLAG_SANITIZER)
+        if (HAVE_FLAG_SANITIZER)
+            check_cxx_compiler_flag(-fsanitize=address HAVE_ADDR_SANITIZER)
+            if (HAVE_ADDR_SANITIZER)
+                message(WARNING "-fsanitize=thread not allowed with --fsanitize=address")
+            else()
+                message("Adding -fsanitize=thread")
+                set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=thread -fno-omit-frame-pointer")
+                set(DCMAKE_C_FLAGS "${DCMAKE_C_FLAGS} -fsanitize=thread -fno-omit-frame-pointer")
+                set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=thread")
+                set(DCMAKE_MODULE_LINKER_FLAGS "${DCMAKE_MODULE_LINKER_FLAGS} -fsanitize=thread")
+            endif()
+        else ()
+            message(WARNING "-fsanitize=thread unavailable")
+        endif ()
+    endmacro()
+
+
+    if(UNIX)
+        set(SYMBOLIZER_PATH "/usr/bin/llvm-symbolizer")
+        add_compile_definitions("symbolize=1:external_symbolizer_path=${SYMBOLIZER_PATH}:verbosity=2")
+    else()
+        add_compile_definitions("symbolize=1:verbosity=2")
     endif()
+
+
+    if(${PROJECT_NAME}_ASAN)
+        add_address_sanitizer()
+    endif()
+    if(${PROJECT_NAME}_MSAN)
+        add_memory_sanitizer()
+    endif()
+    if(${PROJECT_NAME}_LSAN)
+        add_leak_sanitizer()
+    endif()
+    if(${PROJECT_NAME}_UBSAN)
+        add_undefined_sanitizer()
+    endif()
+    if(${PROJECT_NAME}_TSAN)
+        add_thread_sanitizer()
+    endif()
+
 else()
-    set(allowedBuildTypes Asan Debug Release RelWithDebInfo MinSizeRel)
-    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "${allowedBuildTypes}")
-
-    if(CMAKE_BUILD_TYPE AND NOT CMAKE_BUILD_TYPE IN_LIST allowedBuildTypes)
-        message(FATAL_ERROR "Invalid build type: ${CMAKE_BUILD_TYPE}")
-    endif()
+    message(WARNING "Sanitizers unavailable on ${CMAKE_CXX_COMPILER_ID}")
 endif()
-
-set(CMAKE_C_FLAGS_ASAN
-    "${CMAKE_C_FLAGS_DEBUG} -fsanitize=address -fno-omit-frame-pointer" CACHE STRING
-    "Flags used by the C compiler for Asan build type or configuration." FORCE)
-
-set(CMAKE_CXX_FLAGS_ASAN
-    "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address -fno-omit-frame-pointer" CACHE STRING
-    "Flags used by the C++ compiler for Asan build type or configuration." FORCE)
-
-set(CMAKE_CXX_FLAGS_DEBUG
-    "${CMAKE_EXE_LINKER_FLAGS_DEBUG} -fsanitize=address" CACHE STRING
-    "Linker flags to be used to create executables for Asan build type." FORCE)
-
-set(CMAKE_SHARED_LINKER_FLAGS_ASAN
-    "${CMAKE_SHARED_LINKER_FLAGS_DEBUG} -fsanitize=address" CACHE STRING
-    "Linker lags to be used to create shared libraries for Asan build type." FORCE)
-
-set(SYMBOLIZER_PATH "/usr/bin/llvm-symbolizer")
-
-add_compile_definitions("symbolize=1:detect_stack_use_after_return=1:external_symbolizer_path=${SYMBOLIZER_PATH}:verbosity=1:log_threads=1:fast_unwind_on_malloc=0;")
-#add_compile_definitions("verbosity=1:log_threads=1:fast_unwind_on_malloc=0;")
-
-#SET(CMAKE_EXE_LINKER_FLAGS "-fsanitize=address")
