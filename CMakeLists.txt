@@ -12,10 +12,8 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 option(${PROJECT_NAME}_SANITIZE "Build with Leak Sanitizer" OFF)
 option(${PROJECT_NAME}_BUILD_SHARED_LIBS "Build using shared libraries" ON)
-
 
 
 # specify the C++ standard
@@ -45,11 +43,6 @@ set(gcc_like_c "$<COMPILE_LANG_AND_ID:C,ARMClang,AppleClang,Clang,GNU,LCC>")
 target_compile_options(${PROJECT_NAME}_compiler_flags_c INTERFACE
   "$<${gcc_like_c}:$<BUILD_INTERFACE:-Wall;-Wextra;-Wshadow;-Wno-system-headers;-Wno-deprecated;-Wwrite-strings;-Wunused;-Wunused-variable;-Wunused-parameter;-Wunused-function;-Wcast-align;-Wpedantic;-Werror;-ffunction-sections;-fdata-sections>>"
 
-  # Устанавливаем дополнительные парметры сборки для типов сборки:
-  #         Debug
-  #         Release
-  #         MinSizeRel
-  #         RelWithDebInfo
   "$<$<CONFIG:Debug>:$<${gcc_like_c}:$<BUILD_INTERFACE:-O0;-DDEBUG;>>>"
   "$<$<CONFIG:Release>:$<${gcc_like_c}:$<BUILD_INTERFACE:-O2;-DNDEBUG;>>>"
   "$<$<CONFIG:MinSizeRel>:$<${gcc_like_c}:$<BUILD_INTERFACE:-Os;-DNDEBUG;>>>"
@@ -61,11 +54,6 @@ set(gcc_like_cxx "$<COMPILE_LANG_AND_ID:CXX,ARMClang,AppleClang,Clang,GNU,LCC>")
 target_compile_options(${PROJECT_NAME}_compiler_flags_cxx INTERFACE
   "$<${gcc_like_cxx}:$<BUILD_INTERFACE:-Wall;-Wextra;-Wattributes;-Wshadow;-Wno-system-headers;-Wno-deprecated;-Woverloaded-virtual;-Wwrite-strings;-Wunused;-Wunused-variable;-Wunused-parameter;-Wunused-function;-Wcast-align;-Wold-style-cast;-Wpedantic;-Wuninitialized;-ffunction-sections;-fdata-sections;>>"
 
-  # Set build parameters:
-  #         Debug
-  #         Release
-  #         MinSizeRel
-  #         RelWithDebInfo
   "$<$<CONFIG:Debug>:$<${gcc_like_cxx}:$<BUILD_INTERFACE:-O0;-DDEBUG;>>>"
   "$<$<CONFIG:Release>:$<${gcc_like_cxx}:$<BUILD_INTERFACE:-O2;-DNDEBUG;>>>"
   "$<$<CONFIG:MinSizeRel>:$<${gcc_like_cxx}:$<BUILD_INTERFACE:-Os;-DNDEBUG;>>>"
@@ -124,8 +112,4 @@ if(${QT_VERSION_MAJOR} MATCHES "6")
 target_link_libraries(${PROJECT_NAME} PUBLIC
         Qt${QT_VERSION_MAJOR}::OpenGLWidgets
         )
-endif()
-
-if (${PROJECT_NAME}_SANITIZE)
-  include(Sanitize)
 endif()
